@@ -12,10 +12,16 @@ const port = 3000; //server port
 app.use(express.static(path.join(__dirname, 'public')));
 //parse json request bodies
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true}));
 
 //define routes for handling different HTTP methods and paths
-app.post('/slack/action-endpoint', events.slackEndpoint); 
 
+//listens to event subscriptions
+//app.post('/slack/action-endpoint', events.slackEndpoint); 
+
+//listens /suggest commands
+app.post('/suggest', events.suggest);
+app.post('/summarise', events.summarise);
 //start the express server and listen for incoming connections
 app.listen(port, () => {
     console.log(`Listening on port: ${port}`);
