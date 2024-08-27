@@ -8,7 +8,7 @@ to run:
 npm install
 node --env-file=.env app.js
 
-change ngrok url in event subscription, slash command when generating a new url
+change ngrok url in event subscription, slash command when generating a new url and Oauth & permissions redirect URL
 
 
 
