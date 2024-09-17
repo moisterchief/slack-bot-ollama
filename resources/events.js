@@ -38,17 +38,45 @@ async function getChatHistory(channel_id, limit, token) {
         });
 
         if (response.data.ok) {
-            const messages = response.data.messages
-                .map(message => message.text || '')
-                .reverse()
-                .join('\n');
-            return messages;
+            const messages = await Promise.all(
+                response.data.messages.map(async (message) => {
+                    const userName = await getName(message.user, token);
+                    return `${userName} said: ${message.text || ''}`;
+                })
+            );
+            return messages.reverse().join('\n');
         } else {
             throw new Error(`Slack API Error: ${response.data.error}`);
         }
     } catch (error) {
         console.error('Error:', error.message);
         throw new Error('Failed to fetch chat history');
+    }
+}
+
+async function getName(userID, token) {
+    console.log(userID);
+    console.log(token);
+    try {
+        const response = await axios.get('https://slack.com/api/users.info', {
+            params: {
+                user: userID
+            },
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json; charset=utf-8'
+            }
+        });
+
+        if (response.data.ok) {
+            return response.data.user.real_name;  // Corrected the access to `response.data`
+        } else {
+            console.log(response.data);
+            throw new Error(`Slack API Error: ${response.data.error}`);
+        }
+    } catch (error) {
+        console.error('Error:', error.message);
+        throw new Error('Failed to fetch User name');
     }
 }
 
@@ -87,6 +115,21 @@ async function postEphemeral(channel_id, user_id, generatedText, token) {
     }
 }
 
+/**
+ * for event verification
+ */
+event.endpoint = async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ message: 'An error occurred while processing the request' });
+    }
+
+    const apiPostBody = req.body;
+
+    if (apiPostBody.type === 'url_verification') {
+        return res.send(apiPostBody.challenge);
+    }
+
+}
 event.suggest = async (req, res) => {
     if (!req.body) {
         return res.status(400).send({ message: 'An error occurred while processing the request' });
@@ -127,8 +170,9 @@ event.summarise = async (req, res) => {
             return;
         }
 
-        const prompt = 'can you please summarise these messages concisely: \n';
+        const prompt = 'can you please concisely summarise what these messages are about: \n';
         const messages = await getChatHistory(apiPostBody.channel_id, limit, token);
+        console.log(messages);
         const generatedText = await requestOllama(prompt, messages);
         await postEphemeral(apiPostBody.channel_id, apiPostBody.user_id, generatedText, token);
     } catch (error) {
@@ -169,11 +213,14 @@ event.oauthRedirect = async (req, res) => {
 
         await insertChannel(team_id, access_token);
         res.status(200).send({ message: 'Slack app installed', team_name, team_id });
+
     } catch (error) {
         console.error('Error during OAuth process:', error.message);
         res.status(500).send({ message: 'An error occurred during the OAuth process.' });
     }
 }
+
+
 
 // Export the model and handler functions
 module.exports = event;

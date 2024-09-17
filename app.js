@@ -24,6 +24,7 @@ app.use(bodyParser.urlencoded({ extended: true}));
 app.post('/suggest', events.suggest);
 app.post('/summarise', events.summarise);
 app.get('/oauth-redirect', events.oauthRedirect);
+app.post('/endpoint', events.endpoint);
 //start the express server and listen for incoming connections
 app.listen(port, () => {
     console.log(`Listening on port: ${port}`);

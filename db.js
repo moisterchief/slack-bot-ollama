@@ -26,13 +26,26 @@ async function createTable() {
 
 // Function to insert a channel
 async function insertChannel(team_id, access_token) {
-    const sql = `INSERT INTO channels (team_id, access_token) VALUES (?, ?)`;
+    // Check if the team_id already exists in the database
+    const selectSql = `SELECT COUNT(*) as count FROM channels WHERE team_id = ?`;
+    const updateSql = `UPDATE channels SET access_token = ? WHERE team_id = ?`;
+    const insertSql = `INSERT INTO channels (team_id, access_token) VALUES (?, ?)`;
+
     try {
-        const result = await dbRun(sql, [team_id, access_token]);
-        console.log('Inserted row with team_id:', team_id);
-        return result.lastID; // Provide the last inserted row ID
+        // Step 1: Check if the team_id already exists
+        const result = await dbGet(selectSql, [team_id]);
+        if (result.count > 0) {
+            // If the team_id exists, update the access_token
+            await dbRun(updateSql, [access_token, team_id]);
+            console.log(`Updated access_token for team_id: ${team_id}`);
+        } else {
+            // If the team_id does not exist, insert a new row
+            const insertResult = await dbRun(insertSql, [team_id, access_token]);
+            console.log('Inserted new row with team_id:', team_id);
+            return insertResult.lastID; // Provide the last inserted row ID
+        }
     } catch (err) {
-        console.error('Error inserting data:', err.message);
+        console.error('Error inserting or updating data:', err.message);
         throw err;
     }
 }
