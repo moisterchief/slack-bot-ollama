@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { insertChannel, getChannelByTeamId } = require('../db');
+const { post } = require('request');
 
 const ollamaURL = process.env.OLLAMA_URL;
 const model = process.env.MODEL;
@@ -68,9 +69,8 @@ async function getName(userID, token) {
         });
 
         if (response.data.ok) {
-            return response.data.user.real_name;  // Corrected the access to `response.data`
+            return response.data.user.real_name;
         } else {
-            console.log(response.data);
             throw new Error(`Slack API Error: ${response.data.error}`);
         }
     } catch (error) {
@@ -88,7 +88,6 @@ async function requestOllama(prompt, userText) {
         });
 
         const generatedText = response.data.message.content;
-        console.log(generatedText);
         return generatedText;
     } catch (error) {
         console.error('Error:', error.message);
@@ -158,13 +157,12 @@ event.ask = async (req, res) => {
     console.log(apiPostBody.command, apiPostBody.text);
 
     res.status(200).send();
-
     try {
         const token = await getToken(apiPostBody.team_id);
-        const context = '\n USING THIS CHAT HISTORY PLEASE ANSWER: ' + apiPostBody.text;
+        await postEphemeral(apiPostBody.channel_id, apiPostBody.user_id, '....', token);
+        const context = '\nUSING THIS CHAT HISTORY PLEASE ANSWER: ' + apiPostBody.text;
         const prompt = await getChatHistory(apiPostBody.channel_id, 999, token);
 
-        console.log(prompt + context);
         const generatedText = await requestOllama(prompt, context);
         await postEphemeral(apiPostBody.channel_id, apiPostBody.user_id, generatedText, token);
     } catch (error) {
