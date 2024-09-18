@@ -32,10 +32,8 @@ async function insertChannel(team_id, access_token) {
     const insertSql = `INSERT INTO channels (team_id, access_token) VALUES (?, ?)`;
 
     try {
-        // Step 1: Check if the team_id already exists
         const result = await dbGet(selectSql, [team_id]);
         if (result.count > 0) {
-            // If the team_id exists, update the access_token
             await dbRun(updateSql, [access_token, team_id]);
             console.log(`Updated access_token for team_id: ${team_id}`);
         } else {

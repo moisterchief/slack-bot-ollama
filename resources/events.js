@@ -41,7 +41,8 @@ async function getChatHistory(channel_id, limit, token) {
             const messages = await Promise.all(
                 response.data.messages.map(async (message) => {
                     const userName = await getName(message.user, token);
-                    return `${userName} said: ${message.text || ''}`;
+                    // return `${(d = new Date(message.ts * 1000).toISOString())} ${userName} said ${message.text || ''}`;
+                    return `${userName} said ${message.text || ''}`;
                 })
             );
             return messages.reverse().join('\n');
@@ -55,8 +56,6 @@ async function getChatHistory(channel_id, limit, token) {
 }
 
 async function getName(userID, token) {
-    console.log(userID);
-    console.log(token);
     try {
         const response = await axios.get('https://slack.com/api/users.info', {
             params: {
@@ -144,6 +143,29 @@ event.suggest = async (req, res) => {
         const token = await getToken(apiPostBody.team_id);
         const prompt = 'how should I respond to: ';
         const generatedText = await requestOllama(prompt, apiPostBody.text);
+        await postEphemeral(apiPostBody.channel_id, apiPostBody.user_id, generatedText, token);
+    } catch (error) {
+        console.error('Error:', error.message);
+    }
+}
+
+event.ask = async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ message: 'An error occurred while processing the request' });
+    }
+
+    const apiPostBody = req.body;
+    console.log(apiPostBody.command, apiPostBody.text);
+
+    res.status(200).send();
+
+    try {
+        const token = await getToken(apiPostBody.team_id);
+        const context = '\n USING THIS CHAT HISTORY PLEASE ANSWER: ' + apiPostBody.text;
+        const prompt = await getChatHistory(apiPostBody.channel_id, 999, token);
+
+        console.log(prompt + context);
+        const generatedText = await requestOllama(prompt, context);
         await postEphemeral(apiPostBody.channel_id, apiPostBody.user_id, generatedText, token);
     } catch (error) {
         console.error('Error:', error.message);
