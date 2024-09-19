@@ -1,3 +1,4 @@
 node_modules
 .env
 channels.db
+slack_messages.db

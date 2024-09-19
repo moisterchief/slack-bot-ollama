@@ -42,12 +42,12 @@
 When generating a new ngrok URL, make sure to update the following:
 
 - **Event Subscription** URL (https://api.slack.com/apps/{app id}/event-subscriptions?) /endpoint
-
+- **ENV file** HOST_URL
 - **Slash Command** URL (https://api.slack.com/apps/{app id}/slash-commands?) /summarise, /suggest, /ask
 - **OAuth & Permissions** Redirect URL (https://api.slack.com/apps/{app id}/oauth) /oauth-redirect
 
 
-Additionally, if you modify the bot permissions, ensure that the static HTML `'add'` button is updated accordingly.
+Additionally, if you modify the bot permissions, ensure that the static HTML `add` button is updated accordingly.
 
 `public/index.html`
 
@@ -65,4 +65,3 @@ PORT=3000
 HOST_URL=https://***************.ngrok-free.app
 CLIENT_ID=******************************
 CLIENT_SECRET=*********************************
-
