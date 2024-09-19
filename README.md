@@ -1,26 +1,67 @@
-npm init -y <br>
-npm install <br>
-node app.js <br>
-ngrok http 3000 <br>
-ollama run llama3.1 <br>
+# Project Setup
 
-to run:
-npm install
-node --env-file=.env app.js
+## Quick Start
 
-change ngrok url in event subscription, slash command when generating a new url and Oauth & permissions redirect URL if changing bot perms update static html 'add' button
+0. **Initializing a new project:**
 
-env file contains: <br>
-`
-TOKEN=xoxb-*************************** <br>
-OLLAMA_URL=http://localhost:11434/api/chat<br>
-MODEL=llama3.1<br>
-PORT=3000<br>
-HOST_URL=https://***************.ngrok-free.app<br>
-CLIENT_ID=******************************<br>
-CLIENT_SECRET=*********************************<br>
-`
+    ```bash
+    #ignore this please its just so I dont forget
+    npm init -y
+    ```
 
-Useful links: <br>
-https://github.com/ollama/ollama/tree/main/docs <br>
-https://ngrok.com/ <br>
+1. **Install the required dependencies:**
+
+    ```bash
+    npm install
+    ```
+
+2. **Start your Node.js application with the environment variables from the `.env` file:**
+
+    ```bash
+    node --env-file=.env app.js
+    ```
+
+3. **Expose your local server using ngrok:**
+
+    ```bash
+    ngrok http 3000
+    ```
+
+4. **Run the Ollama model:**
+
+    ```bash
+    ollama run llama3.1
+    ```
+
+---
+
+## Configuration Changes
+
+### Updating URLs and OAuth Details:
+
+When generating a new ngrok URL, make sure to update the following:
+
+- **Event Subscription** URL (https://api.slack.com/apps/{app id}/event-subscriptions?) /endpoint
+
+- **Slash Command** URL (https://api.slack.com/apps/{app id}/slash-commands?) /summarise, /suggest, /ask
+- **OAuth & Permissions** Redirect URL (https://api.slack.com/apps/{app id}/oauth) /oauth-redirect
+
+
+Additionally, if you modify the bot permissions, ensure that the static HTML `'add'` button is updated accordingly.
+
+`public/index.html`
+
+---
+
+## `.env` File
+
+Your `.env` file should contain these environment variables and be at the top level of your file structure:
+
+```bash
+TOKEN=xoxb-***************************
+OLLAMA_URL=http://localhost:11434/api/chat
+MODEL=llama3.1
+PORT=3000
+HOST_URL=https://***************.ngrok-free.app
+CLIENT_ID=******************************
+CLIENT_SECRET=*********************************
