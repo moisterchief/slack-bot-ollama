@@ -1,6 +1,7 @@
 const axios = require('axios');
 const { insertChannel, getChannelByTeamId } = require('./db');
-const {getToken, getChatHistory, postEphemeral, requestOllama, getChannelData, retrieveChatMessagesByChannel, getBotID, storeChatMessages} = require('./requests')
+const {getToken, getChatHistory, postEphemeral, requestOllama, getChannelData, retrieveChatMessagesByChannel, getBotID, storeChatMessages, getName, postMessage} = require('./requests')
+const { getChannels, insertMessage } = require('./messages');
 const { post } = require('request');
 
 const client_id = process.env.CLIENT_ID;
@@ -20,21 +21,15 @@ event.endpoint = async (req, res) => {
     res.status(200).send();
     const apiPostBody = req.body;
 
+    console.log(apiPostBody.event);
     if (apiPostBody.type === 'url_verification') {
         return res.send(apiPostBody.challenge);
     }
+    else if (apiPostBody.event.type === 'message') {
+        await checkAndAddMessage(apiPostBody);
+    }
     else if (apiPostBody.event.type === 'member_joined_channel'){
-        console.log("hello");
-        const joined_user = apiPostBody.event.user;
-        const channel = apiPostBody.event.channel;
-        const team = apiPostBody.event.team;
-        const token = await getToken(team)
-        const bot_id = await getBotID(token);
-        console.log(joined_user);
-        console.log(bot_id);
-        if (joined_user === bot_id){
-            storeChatMessages(channel, team, 999, token);
-        }
+        await addNewChannelData(apiPostBody);
     }
 
 }
@@ -152,7 +147,59 @@ event.oauthRedirect = async (req, res) => {
     }
 }
 
+async function addNewChannelData(apiPostBody) {
+    const joined_user = apiPostBody.event.user;
+    const channel = apiPostBody.event.channel;
+    const team = apiPostBody.event.team;
+    const token = await getToken(team);
+    const bot_id = await getBotID(token);
 
+    if (joined_user === bot_id) {
+        storeChatMessages(channel, team, 999, token);
+    }
+}
+
+async function checkAndAddMessage(apiPostBody) {
+    const channel_id = apiPostBody.event.channel;
+    const user_id = apiPostBody.event.user;
+    const team_id = apiPostBody.event.team;
+    const token = await getToken(team_id);
+    const username = await getName(user_id, token);
+    const message_text = username + ' said ' + apiPostBody.event.text;
+    const timestamp = apiPostBody.event.ts;
+    const bot_id = await getBotID(token);
+    try {
+        // Get all unique channel IDs from the database
+        const channels = await getChannels();
+
+        // Check if the current message's channel exists in the database
+        if (channels.includes(channel_id)) {
+
+            if(message_text.includes('??') && user_id != bot_id){
+                try {
+                    await postMessage(channel_id, user_id, '....', token);
+                    const context = '\nUSING THIS CHAT HISTORY PLEASE ANSWER: ' + message_text;
+                    const prompt = await retrieveChatMessagesByChannel(channel_id)
+                    console.log(prompt);
+                    const generatedText = await requestOllama(prompt, context);
+                    await postMessage(channel_id, user_id, generatedText, token);
+                } catch (error) {
+                    console.error('Error:', error.message);
+                }
+            }
+            console.log(`Channel ${channel_id} exists in the database. Inserting message...`);
+
+            await insertMessage(timestamp, team_id, channel_id, username, user_id, message_text);
+
+        } else {
+            console.log(`Channel ${channel_id} does not exist in the database.`);
+        }
+    } catch (error) {
+        console.error('Error processing message:', error.message);
+    }
+}
 
 // Export the model and handler functions
 module.exports = event;
+
+

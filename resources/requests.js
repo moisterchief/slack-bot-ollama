@@ -63,7 +63,7 @@ async function getName(userID, token) {
                 'Content-Type': 'application/json; charset=utf-8'
             }
         });
-
+        console.log(response.data);
         if (response.data.ok) {
             return response.data.user.real_name;
         } else {
@@ -172,6 +172,23 @@ async function postEphemeral(channel_id, user_id, generatedText, token) {
     }
 }
 
+async function postMessage(channel_id, user_id, generatedText, token) {
+    try {
+        await axios.post('https://slack.com/api/chat.postMessage', {
+            channel: channel_id,
+            text: generatedText
+        }, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json; charset=utf-8'
+            }
+        });
+        console.log('Message Sent');
+    } catch (error) {
+        console.error('Error:', error.message);
+    }
+}
+
 async function getBotID(token) {
     try {
         const response = await axios.post('https://slack.com/api/auth.test', {},{
@@ -193,4 +210,4 @@ async function getBotID(token) {
         throw new Error('Failed to fetch bot ID');
     }
 }
-module.exports = {getToken, getChatHistory, postEphemeral, requestOllama, getChannelData, retrieveChatMessagesByChannel, getBotID, storeChatMessages};
+module.exports = {getToken, getChatHistory, postEphemeral, requestOllama, getChannelData, retrieveChatMessagesByChannel, getBotID, storeChatMessages, getName, postMessage};

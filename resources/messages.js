@@ -73,6 +73,18 @@ async function getMessagesByChannel(channel_id, limit) {
     }
 }
 
+async function getChannels() {
+    const sql = `SELECT DISTINCT channel_id FROM messages`; // SQL query to get unique channel IDs
+    try {
+        const rows = await dbAll(sql); 
+        const channelIds = rows.map(row => row.channel_id); // Extract the channel_id from each row
+        return channelIds; 
+    } catch (err) {
+        console.error('Error fetching unique channel IDs:', err.message);
+        throw err;
+    }
+}
+
 // Call the function to create the table and indexes
 async function initializeDatabase() {
     await createTable();
@@ -89,4 +101,4 @@ process.on('exit', () => {
 });
 
 
-module.exports = { insertMessage, getMessagesByChannel, initializeDatabase };
+module.exports = { insertMessage, getMessagesByChannel, initializeDatabase, getChannels};
