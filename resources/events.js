@@ -112,6 +112,25 @@ async function postEphemeral(channel_id, user_id, generatedText, token) {
         console.error('Error:', error.message);
     }
 }
+/*
+* for sending normal messages to the channel givin
+*/
+async function postMessage(channel_id, thread_id, generatedText, token) {
+    try {
+        await axios.post('https://slack.com/api/chat.postMessage', {
+            channel: channel_id,
+            thread_ts: thread_id,
+            text: generatedText
+        }, {
+            headers: {
+                'Content-Type': 'application/json; charset=utf-8'
+            }
+        });
+        console.log('Message Sent');
+    } catch (error) {
+        console.error('Error:', error.message);
+    }
+}
 
 /**
  * for event verification
