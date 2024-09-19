@@ -20,7 +20,6 @@ async function getToken(team_id) {
     }
 }
 
-
 /**
  * gets a specified amount of messages from chat history from the channel
  * @param {*} channel_id if of channel command sent from
@@ -184,6 +183,28 @@ event.ask = async (req, res) => {
 
         const generatedText = await requestOllama(prompt, context);
         await postEphemeral(apiPostBody.channel_id, apiPostBody.user_id, generatedText, token);
+    } catch (error) {
+        console.error('Error:', error.message);
+    }
+}
+
+event.askThreaded = async (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ message: 'An error occurred while processing the request' });
+    }
+
+    const apiPostBody = req.body;
+    console.log(apiPostBody.command, apiPostBody.text);
+
+    res.status(200).send();
+    try {
+        const token = await getToken(apiPostBody.team_id);
+        await postMessage(apiPostBody.channel_id, apiPostBody.ts, '....', token);
+        const context = '\nUSING THIS CHAT HISTORY PLEASE ANSWER: ' + apiPostBody.text;
+        const prompt = await getChatHistory(apiPostBody.channel_id, 999, token);
+
+        const generatedText = await requestOllama(prompt, context);
+        await postMessage(apiPostBody.channel_id, apiPostBody.ts, generatedText, token);
     } catch (error) {
         console.error('Error:', error.message);
     }
