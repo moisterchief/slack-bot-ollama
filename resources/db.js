@@ -60,7 +60,7 @@ async function getChannelByTeamId(team_id) {
     }
 }
 
-// createTable();
+createTable();
 
 // Close the database connection on process exit
 process.on('exit', () => {

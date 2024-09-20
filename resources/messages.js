@@ -29,6 +29,7 @@ async function createIndexes() {
         console.error('Error creating indexes:', err.message);
     }
 }
+//TODO: separate db's for each team_id cause currently this is retarded
 
 // Function to create the table (if not already created)
 async function createTable() {

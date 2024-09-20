@@ -53,7 +53,6 @@ event.ask = async (req, res) => {
     if (!req.body) {
         return res.status(400).send({ message: 'An error occurred while processing the request' });
     }
-    const {  } = apiPostBody.req.body;
 
     const apiPostBody = req.body;
     console.log(apiPostBody.command, apiPostBody.text);
