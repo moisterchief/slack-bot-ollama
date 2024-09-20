@@ -63,7 +63,6 @@ async function getName(userID, token) {
                 'Content-Type': 'application/json; charset=utf-8'
             }
         });
-        console.log(response.data);
         if (response.data.ok) {
             return response.data.user.real_name;
         } else {
@@ -100,7 +99,7 @@ async function getChannelData(team_id, token) {
     }
 }
 
-async function retrieveChatMessagesByChannel(channel_id) {
+async function getChannelMessagesAsString(channel_id) {
     rows = await getMessagesByChannel(channel_id, 999);
 
     return context = rows.map(row => row.message_text).join('\n');
@@ -210,4 +209,4 @@ async function getBotID(token) {
         throw new Error('Failed to fetch bot ID');
     }
 }
-module.exports = {getToken, getChatHistory, postEphemeral, requestOllama, getChannelData, retrieveChatMessagesByChannel, getBotID, storeChatMessages, getName, postMessage};
+module.exports = {getToken, getChatHistory, postEphemeral, requestOllama, getChannelData, getChannelMessagesAsString, getBotID, storeChatMessages, getName, postMessage};

@@ -50,11 +50,11 @@ async function createTable() {
 
 // Function to insert a message into the database
 async function insertMessage(timestamp, team_id, channel_id, username, user_id, message_text) {
-    const sql = `INSERT OR IGNORE INTO messages (timestamp, team_id, channel_id, username, user_id, message_text) 
+    const sql = `INSERT OR IGNORE INTO messages (timestamp, team_id, channel_id, username, user_id, message_text)
                  VALUES (?, ?, ?, ?, ?, ?)`;
     try {
         await dbRun(sql, [timestamp, team_id, channel_id, username, user_id, message_text]);
-        console.log(`Message inserted for timestamp: ${timestamp, team_id, channel_id, username, user_id, message_text}`);
+        console.log(`Message inserted for timestamp: ${timestamp} ${team_id} ${channel_id} ${username} ${user_id} ${message_text}`);
     } catch (error) {
         console.error('Failed to insert message:', error.message);
         console.log(timestamp, team_id, channel_id, username, user_id, message_text);

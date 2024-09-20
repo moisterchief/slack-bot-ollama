@@ -1,18 +1,15 @@
 const axios = require('axios');
 const { insertChannel, getChannelByTeamId } = require('./db');
-const {getToken, getChatHistory, postEphemeral, requestOllama, getChannelData, retrieveChatMessagesByChannel, getBotID, storeChatMessages, getName, postMessage} = require('./requests')
+const {getToken, getChatHistory, postEphemeral, requestOllama, getChannelData, getChannelMessagesAsString, getBotID, storeChatMessages, getName, postMessage} = require('./requests')
 const { getChannels, insertMessage } = require('./messages');
 const { post } = require('request');
 
-const client_id = process.env.CLIENT_ID;
-const client_secret = process.env.CLIENT_SECRET;
-const hostURL = process.env.HOST_URL;
+const CLIENT_ID = process.env.CLIENT_ID;
+const CLIENT_SECRET = process.env.CLIENT_SECRET;
+const HOST_URL = process.env.HOST_URL;
 
 const event = () => {}
 
-/**
- * for event verification
- */
 event.endpoint = async (req, res) => {
     if (!req.body) {
         return res.status(400).send({ message: 'An error occurred while processing the request' });
@@ -21,15 +18,14 @@ event.endpoint = async (req, res) => {
     res.status(200).send();
     const apiPostBody = req.body;
 
-    console.log(apiPostBody.event);
     if (apiPostBody.type === 'url_verification') {
         return res.send(apiPostBody.challenge);
     }
     else if (apiPostBody.event.type === 'message') {
-        await checkAndAddMessage(apiPostBody);
+        await checkAndAddMessage(apiPostBody.event);
     }
     else if (apiPostBody.event.type === 'member_joined_channel'){
-        await addNewChannelData(apiPostBody);
+        await addNewChannelData(apiPostBody.event);
     }
 
 }
@@ -57,6 +53,7 @@ event.ask = async (req, res) => {
     if (!req.body) {
         return res.status(400).send({ message: 'An error occurred while processing the request' });
     }
+    const {  } = apiPostBody.req.body;
 
     const apiPostBody = req.body;
     console.log(apiPostBody.command, apiPostBody.text);
@@ -67,8 +64,7 @@ event.ask = async (req, res) => {
         await postEphemeral(apiPostBody.channel_id, apiPostBody.user_id, '....', token);
         const context = '\nUSING THIS CHAT HISTORY PLEASE ANSWER: ' + apiPostBody.text;
         // const prompt = await getChatHistory(apiPostBody.channel_id, 999, token);
-        const prompt = await retrieveChatMessagesByChannel(apiPostBody.channel_id)
-        console.log(prompt);
+        const prompt = await getChannelMessagesAsString(apiPostBody.channel_id);
         const generatedText = await requestOllama(prompt, context);
         await postEphemeral(apiPostBody.channel_id, apiPostBody.user_id, generatedText, token);
     } catch (error) {
@@ -98,7 +94,6 @@ event.summarise = async (req, res) => {
 
         const prompt = 'can you please concisely summarise what these messages are about: \n';
         const messages = await getChatHistory(apiPostBody.channel_id, limit, token);
-        console.log(messages);
         const generatedText = await requestOllama(prompt, messages);
         await postEphemeral(apiPostBody.channel_id, apiPostBody.user_id, generatedText, token);
     } catch (error) {
@@ -113,13 +108,12 @@ event.oauthRedirect = async (req, res) => {
         }
 
         const code = req.query.code;
-        // console.log('Authorization code:', code);
 
         const params = new URLSearchParams();
         params.append('code', code);
-        params.append('client_id', client_id);
-        params.append('client_secret', client_secret);
-        params.append('redirect_uri', hostURL + '/oauth-redirect');
+        params.append('client_id', CLIENT_ID);
+        params.append('client_secret', CLIENT_SECRET);
+        params.append('redirect_uri', HOST_URL + '/oauth-redirect');
 
         const headers = {
             'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8'
@@ -133,14 +127,12 @@ event.oauthRedirect = async (req, res) => {
             return res.status(400).send({ message: 'Slack OAuth failed.', error: data.error });
         }
 
-        const team_id = data.team.id;
+        const {id: team_id, name: team_name} = data.team;
         const access_token = data.access_token;
-        const team_name = data.team.name;
 
         await insertChannel(team_id, access_token);
         res.status(200).send({ message: 'Slack app installed', team_name, team_id });
 
-        // getChannelData(team_id, access_token);
     } catch (error) {
         console.error('Error during OAuth process:', error.message);
         res.status(500).send({ message: 'An error occurred during the OAuth process.' });
@@ -148,9 +140,7 @@ event.oauthRedirect = async (req, res) => {
 }
 
 async function addNewChannelData(apiPostBody) {
-    const joined_user = apiPostBody.event.user;
-    const channel = apiPostBody.event.channel;
-    const team = apiPostBody.event.team;
+    const { user: joined_user, channel: channel, team: team} = apiPostBody;
     const token = await getToken(team);
     const bot_id = await getBotID(token);
 
@@ -160,43 +150,30 @@ async function addNewChannelData(apiPostBody) {
 }
 
 async function checkAndAddMessage(apiPostBody) {
-    const channel_id = apiPostBody.event.channel;
-    const user_id = apiPostBody.event.user;
-    const team_id = apiPostBody.event.team;
+    const { channel: channel_id, user: user_id, text, ts: timestamp, team: team_id } = apiPostBody;
     const token = await getToken(team_id);
-    const username = await getName(user_id, token);
-    const message_text = username + ' said ' + apiPostBody.event.text;
-    const timestamp = apiPostBody.event.ts;
     const bot_id = await getBotID(token);
-    try {
-        // Get all unique channel IDs from the database
+
+    if (user_id !== bot_id) {
+        const username = await getName(user_id, token);
+        const message_text = `${username} said ${text}`;
+
         const channels = await getChannels();
-
-        // Check if the current message's channel exists in the database
         if (channels.includes(channel_id)) {
-
-            if(message_text.includes('??') && user_id != bot_id){
-                try {
-                    await postMessage(channel_id, user_id, '....', token);
-                    const context = '\nUSING THIS CHAT HISTORY PLEASE ANSWER: ' + message_text;
-                    const prompt = await retrieveChatMessagesByChannel(channel_id)
-                    console.log(prompt);
-                    const generatedText = await requestOllama(prompt, context);
-                    await postMessage(channel_id, user_id, generatedText, token);
-                } catch (error) {
-                    console.error('Error:', error.message);
-                }
+            if (message_text.includes('??')) {
+                await handleQuestion(channel_id, user_id, message_text, token);
             }
-            console.log(`Channel ${channel_id} exists in the database. Inserting message...`);
-
             await insertMessage(timestamp, team_id, channel_id, username, user_id, message_text);
-
-        } else {
-            console.log(`Channel ${channel_id} does not exist in the database.`);
         }
-    } catch (error) {
-        console.error('Error processing message:', error.message);
     }
+}
+
+async function handleQuestion(channel_id, user_id, message_text, token) {
+    await postMessage(channel_id, user_id, '....', token);
+    const context = `\nUSING THIS CHAT HISTORY PLEASE ANSWER: ${message_text}`;
+    const prompt = await getChannelMessagesAsString(channel_id);
+    const generatedText = await requestOllama(prompt, context);
+    await postMessage(channel_id, user_id, generatedText, token);
 }
 
 // Export the model and handler functions
