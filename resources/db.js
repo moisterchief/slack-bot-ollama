@@ -40,7 +40,7 @@ async function insertChannel(team_id, access_token) {
             // If the team_id does not exist, insert a new row
             const insertResult = await dbRun(insertSql, [team_id, access_token]);
             console.log('Inserted new row with team_id:', team_id);
-            return insertResult.lastID; // Provide the last inserted row ID
+            return; 
         }
     } catch (err) {
         console.error('Error inserting or updating data:', err.message);

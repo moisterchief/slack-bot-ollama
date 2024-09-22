@@ -1,7 +1,7 @@
 const axios = require('axios');
 const { insertChannel, getChannelByTeamId } = require('./db');
 const {getToken, getChatHistory, postEphemeral, requestOllama, getChannelData, getChannelMessagesAsString, getBotID, storeChatMessages, getName, postMessage} = require('./requests')
-const { getChannels, insertMessage } = require('./messages');
+const { getChannelsForTeam, insertMessage } = require('./messages');
 const { post } = require('request');
 
 const CLIENT_ID = process.env.CLIENT_ID;
@@ -21,7 +21,8 @@ event.endpoint = async (req, res) => {
     if (apiPostBody.type === 'url_verification') {
         return res.send(apiPostBody.challenge);
     }
-    else if (apiPostBody.event.type === 'message') {
+    else if (apiPostBody.event.type === 'message' && apiPostBody.event.subtype == null) {
+        console.log(apiPostBody.event);
         await checkAndAddMessage(apiPostBody.event);
     }
     else if (apiPostBody.event.type === 'member_joined_channel'){
@@ -63,7 +64,7 @@ event.ask = async (req, res) => {
         await postEphemeral(apiPostBody.channel_id, apiPostBody.user_id, '....', token);
         const context = '\nUSING THIS CHAT HISTORY PLEASE ANSWER: ' + apiPostBody.text;
         // const prompt = await getChatHistory(apiPostBody.channel_id, 999, token);
-        const prompt = await getChannelMessagesAsString(apiPostBody.channel_id);
+        const prompt = await getChannelMessagesAsString(apiPostBody.team_id, apiPostBody.channel_id);
         const generatedText = await requestOllama(prompt, context);
         await postEphemeral(apiPostBody.channel_id, apiPostBody.user_id, generatedText, token);
     } catch (error) {
@@ -149,29 +150,36 @@ async function addNewChannelData(apiPostBody) {
 }
 
 async function checkAndAddMessage(apiPostBody) {
+    // console.log(apiPostBody);
     const { channel: channel_id, user: user_id, text, ts: timestamp, team: team_id } = apiPostBody;
     const token = await getToken(team_id);
     const bot_id = await getBotID(token);
-
+    const username = await getName(user_id, token);
     if (user_id !== bot_id) {
-        const username = await getName(user_id, token);
-        const message_text = `${username} said ${text}`;
+        
+        const message_text = `${username}: ${text}`;
 
-        const channels = await getChannels();
+        const channels = await getChannelsForTeam(team_id);
         if (channels.includes(channel_id)) {
             if (message_text.includes('??')) {
-                await handleQuestion(channel_id, user_id, message_text, token);
+                await handleQuestion(team_id, channel_id, user_id, username, text, token);
             }
             await insertMessage(timestamp, team_id, channel_id, username, user_id, message_text);
         }
     }
+    else{
+        await insertMessage(timestamp, team_id, channel_id, username, user_id, `(BOT) YOU REPLIED: ${text}`); 
+    }
 }
 
-async function handleQuestion(channel_id, user_id, message_text, token) {
+async function handleQuestion(team_id, channel_id, user_id, user, text, token) {
     await postMessage(channel_id, user_id, '....', token);
-    const context = `\nUSING THIS CHAT HISTORY PLEASE ANSWER: ${message_text}`;
-    const prompt = await getChannelMessagesAsString(channel_id);
+    const context = `\n___________________________________________________________\nTHE CHAT HISTORY IS THERE FOR CONTEXT - please answer ${user}'s question: ${text}`;
+    
+    const prompt = await getChannelMessagesAsString(team_id, channel_id);
     const generatedText = await requestOllama(prompt, context);
+
+    console.log(prompt + '\n' + context);
     await postMessage(channel_id, user_id, generatedText, token);
 }
 

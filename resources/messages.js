@@ -11,29 +11,24 @@ const dbRun = promisify(db.run.bind(db));
 const dbGet = promisify(db.get.bind(db));
 const dbAll = promisify(db.all.bind(db));
 
-// Function to create indexes this is for better performance 
-async function createIndexes() {
+// Initialize the database and create necessary indexes for a team-specific table
+async function createIndexesForTeam(team_id) {
+    const tableName = `messages_${team_id}`;
     try {
-        // Index on channel_id
-        await dbRun(`CREATE INDEX IF NOT EXISTS idx_channel_id ON messages(channel_id);`);
-        console.log('Index on channel_id created successfully');
-        
-        // Index on timestamp
-        await dbRun(`CREATE INDEX IF NOT EXISTS idx_timestamp ON messages(timestamp);`);
-        console.log('Index on timestamp created successfully');
-        
-        // Optional: Index on user_id
-        await dbRun(`CREATE INDEX IF NOT EXISTS idx_user_id ON messages(user_id);`);
-        console.log('Index on user_id created successfully');
+        await dbRun(`CREATE INDEX IF NOT EXISTS idx_channel_id ON ${tableName}(channel_id);`);
+        await dbRun(`CREATE INDEX IF NOT EXISTS idx_timestamp ON ${tableName}(timestamp);`);
+        await dbRun(`CREATE INDEX IF NOT EXISTS idx_user_id ON ${tableName}(user_id);`);
+        console.log(`Indexes created for team ${team_id}`);
     } catch (err) {
-        console.error('Error creating indexes:', err.message);
+        console.error(`Error creating indexes for team ${team_id}:`, err.message);
     }
 }
 //TODO: separate db's for each team_id cause currently this is retarded
 
 // Function to create the table (if not already created)
-async function createTable() {
-    const sql = `CREATE TABLE IF NOT EXISTS messages (
+async function createTableForTeam(team_id) {
+    const tableName = `messages_${team_id}`;
+    const sql = `CREATE TABLE IF NOT EXISTS ${tableName} (
         timestamp TEXT PRIMARY KEY,
         team_id TEXT,
         channel_id TEXT,
@@ -43,6 +38,7 @@ async function createTable() {
     )`;
     try {
         await dbRun(sql);
+        await createIndexesForTeam(team_id);
         console.log('Table created successfully');
     } catch (err) {
         console.error('Error creating table:', err.message);
@@ -51,20 +47,22 @@ async function createTable() {
 
 // Function to insert a message into the database
 async function insertMessage(timestamp, team_id, channel_id, username, user_id, message_text) {
-    const sql = `INSERT OR IGNORE INTO messages (timestamp, team_id, channel_id, username, user_id, message_text)
+    const tableName = `messages_${team_id}`;
+    const sql = `INSERT OR IGNORE INTO ${tableName} (timestamp, team_id, channel_id, username, user_id, message_text)
                  VALUES (?, ?, ?, ?, ?, ?)`;
     try {
+        await createTableForTeam(team_id);
         await dbRun(sql, [timestamp, team_id, channel_id, username, user_id, message_text]);
-        console.log(`Message inserted for timestamp: ${timestamp} ${team_id} ${channel_id} ${username} ${user_id} ${message_text}`);
+        console.log(`Message inserted for ${team_id} with: ${timestamp} ${team_id} ${channel_id} ${username} ${user_id} ${message_text}`);
     } catch (error) {
-        console.error('Failed to insert message:', error.message);
-        console.log(timestamp, team_id, channel_id, username, user_id, message_text);
+        console.error(`Failed to insert message into ${team_id}:`, error.message);
     }
 }
 
 // Function to get messages from a specific channel
-async function getMessagesByChannel(channel_id, limit) {
-    const sql = `SELECT * FROM messages WHERE channel_id = ? ORDER BY timestamp ASC LIMIT ?`;
+async function getMessagesByChannel(team_id, channel_id, limit) {
+    const tableName = `messages_${team_id}`
+    const sql = `SELECT * FROM ${tableName} WHERE channel_id = ? ORDER BY timestamp ASC LIMIT ?`;
     try {
         const rows = await dbAll(sql, [channel_id, limit]);
         return rows;
@@ -74,8 +72,9 @@ async function getMessagesByChannel(channel_id, limit) {
     }
 }
 
-async function getChannels() {
-    const sql = `SELECT DISTINCT channel_id FROM messages`; // SQL query to get unique channel IDs
+async function getChannelsForTeam(team_id) {
+    const tableName = `messages_${team_id}`
+    const sql = `SELECT DISTINCT channel_id FROM ${tableName}`; // SQL query to get unique channel IDs
     try {
         const rows = await dbAll(sql); 
         const channelIds = rows.map(row => row.channel_id); // Extract the channel_id from each row
@@ -86,14 +85,6 @@ async function getChannels() {
     }
 }
 
-// Call the function to create the table and indexes
-async function initializeDatabase() {
-    await createTable();
-    await createIndexes();
-};
-
-initializeDatabase();
-
 // Close the database connection on process exit
 process.on('exit', () => {
     db.close((err) => {
@@ -102,4 +93,4 @@ process.on('exit', () => {
 });
 
 
-module.exports = { insertMessage, getMessagesByChannel, initializeDatabase, getChannels};
+module.exports = { insertMessage, getMessagesByChannel, getChannelsForTeam};

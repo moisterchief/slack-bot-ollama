@@ -1,7 +1,8 @@
 const axios = require('axios');
-const { insertChannel, getChannelByTeamId } = require('./db');
-const { insertMessage, getMessagesByChannel, initializeDatabase } = require('./messages');
+const { getChannelByTeamId } = require('./db');
+const { insertMessage, getMessagesByChannel } = require('./messages');
 const { post, get } = require('request');
+const fs = require('fs').promises;
 
 const ollamaURL = process.env.OLLAMA_URL;
 const model = process.env.MODEL;
@@ -39,7 +40,7 @@ async function getChatHistory(channel_id, limit, token) {
                 response.data.messages.map(async (message) => {
                     const userName = await getName(message.user, token);
                     // return `${(d = new Date(message.ts * 1000).toISOString())} ${userName} said ${message.text || ''}`;
-                    return `${userName} said ${message.text || ''}`;
+                    return `${userName}: ${message.text || ''}`;
                 })
             );
             return messages.reverse().join('\n');
@@ -99,10 +100,20 @@ async function getChannelData(team_id, token) {
     }
 }
 
-async function getChannelMessagesAsString(channel_id) {
-    rows = await getMessagesByChannel(channel_id, 999);
+async function getChannelMessagesAsString(team_id, channel_id) {
+    rows = await getMessagesByChannel(team_id, channel_id, 999);
+    const context = rows.map(row => row.message_text).join('\n');
+        // Define the file path where you want to store the context
+    const filePath = `./channel_${team_id}_${channel_id}_messages.txt`;
 
-    return context = rows.map(row => row.message_text).join('\n');
+    try {
+        // Write the context to the file
+        await fs.writeFile(filePath, context, 'utf8');
+        console.log(`Context has been written to ${filePath}`);
+    } catch (error) {
+        console.error('Error writing to file:', error);
+    }
+    return context;
 }
 
 /**
@@ -124,8 +135,14 @@ async function storeChatMessages(channel_id, team_id, limit, token) {
 
         if (response.data.ok) {
             response.data.messages.map(async (message) => {
+                const bot_id = await getBotID(token);
                 const userName = await getName(message.user, token);
-                insertMessage(message.ts, team_id, channel_id, userName, message.user, userName + ' said ' + message.text);
+                if(bot_id === message.user){
+                    insertMessage(message.ts, team_id, channel_id, userName, message.user, '(BOT) YOU REPLIED: ' + message.text);
+                }
+                else{
+                    insertMessage(message.ts, team_id, channel_id, userName, message.user, userName + ': ' + message.text);
+                }
             })
         } else {
             // throw new Error(`Slack API Error: ${response.data.error}`);
