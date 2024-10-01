@@ -8,6 +8,7 @@ const PORT = process.env.PORT;
 //create an express applications
 const app = express();
 const port = PORT; //server port
+const reminderInterval = 1 * 60 * 1000;
 
 //serve static files from the public directory
 app.use(express.static(path.join(__dirname, 'public')));
@@ -26,6 +27,9 @@ app.post('/summarise', events.summarise);
 app.get('/oauth-redirect', events.oauthRedirect);
 app.post('/endpoint', events.endpoint);
 app.post('/ask', events.ask);
+
+setInterval(() => {events.checkUnansweredQuestions();}, reminderInterval);
+
 //start the express server and listen for incoming connections
 app.listen(port, () => {
     console.log(`Listening on port: ${port}`);

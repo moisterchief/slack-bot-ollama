@@ -9,13 +9,13 @@ const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const HOST_URL = process.env.HOST_URL;
 
 const event = () => {}
+const unansweredQuestions = new Map();
 
 event.endpoint = async (req, res) => {
     if (!req.body) {
         return res.status(400).send({ message: 'An error occurred while processing the request' });
     }
 
-    res.status(200).send();
     const apiPostBody = req.body;
 
     if (apiPostBody.type === 'url_verification') {
@@ -27,6 +27,8 @@ event.endpoint = async (req, res) => {
     else if (apiPostBody.event.type === 'member_joined_channel'){
         await addNewChannelData(apiPostBody.event);
     }
+
+    res.status(200).send();
 
 }
 event.suggest = async (req, res) => {
@@ -162,6 +164,10 @@ async function checkAndAddMessage(apiPostBody) {
             if (message_text.includes('??')) {
                 await handleQuestion(channel_id, user_id, message_text, token);
             }
+
+            detectQuestion(message_text, channel_id, user_id, timestamp,team);
+            detectAnswer(message_text, channel_id, user_id);
+
             await insertMessage(timestamp, team_id, channel_id, username, user_id, message_text);
         }
     }
@@ -174,6 +180,92 @@ async function handleQuestion(channel_id, user_id, message_text, token) {
     const generatedText = await requestOllama(prompt, context);
     await postMessage(channel_id, user_id, generatedText, token);
 }
+
+function detectQuestion(message_text, channel_id, user_id, timestamp, team)
+{
+    if(message_text.includes('?'))
+    {
+        storeUnansweredQuestions(channel_id, user_id, timestamp, message_text, team);
+    }
+}
+
+async function detectAnswer(message_text, channel_id, user_id,)
+{
+    for(const [timestamp, question] of unansweredQuestions.entries())
+    {
+        if(channel_id === question.channel_id)
+        {
+            const isAnswer = await checkIfAnswered(question.question_text, message_text);
+                
+            if(isAnswer)
+            {
+                unansweredQuestions.delete(timestamp);
+                console.log(`Question answered: ${question.question_text}`)
+                break;
+            }   
+        }
+    }
+}
+
+async function checkUnansweredQuestions()
+{
+    const now = Date.now();
+    const reminderThreshold = 1 * 60 * 1000;
+    console.log("Just waiting...");
+
+    if(unansweredQuestions.size === 0)
+    {
+        console.log('No questions');
+    }
+
+    for (const [timestamp, question] of unansweredQuestions.entries())
+    {
+        const timeElapsed = now - question.timestamp;
+        console.log(now - question.timestamp);
+        if(timeElapsed > reminderThreshold)
+        { 
+            const token = await getToken(question.team);
+            await postMessage(question.channel_id, question.user_id, `Reminder: question: ${question.question_text}`, token);
+            unansweredQuestions.delete(timestamp);
+        }
+    }
+}
+
+async function checkIfAnswered(question, message) 
+{
+    try
+    {
+        console.log("here...");
+        const prompt = `Question: ${question}\n Response: ${message}\n Does this response answer the question? respond with "yes" or "no".`;
+        const generatedResponse = await requestOllama(prompt, '');
+        console.log(prompt);
+        console.log(generatedResponse);
+        if(generatedResponse.toLowerCase().includes('yes'))
+        {
+            console.log("was answered");
+            return true;
+        }
+        else
+        {
+            console.log("was not answered");
+            return false;
+        }
+    }
+    catch (error)
+    {
+        console.error('Error while checking answer with Ollama:', error.message);
+        return false;
+    }
+}
+
+function storeUnansweredQuestions(channel_id, user_id, timestamp, question_text, team)
+{
+    unansweredQuestions.set(timestamp, {channel_id: channel_id, user_id: user_id, question_text: question_text, timestamp: timestamp, team: team});
+    console.log(channel_id);
+    console.log(`Question detected: ${question_text}`);
+}
+
+event.checkUnansweredQuestions = checkUnansweredQuestions;
 
 // Export the model and handler functions
 module.exports = event;
