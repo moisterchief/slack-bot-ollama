@@ -18,7 +18,11 @@
 2. **Start your Node.js application with the environment variables from the `.env` file:**
 
     ```bash
+    #old
     node --env-file=.env app.js
+
+    #using dotenv
+    node app.js
     ```
 
 3. **Expose your local server using ngrok:**

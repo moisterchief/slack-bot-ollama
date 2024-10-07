@@ -1,8 +1,8 @@
 const axios = require('axios');
-const { insertChannel, getChannelByTeamId } = require('./db');
-const {getToken, getChatHistory, postEphemeral, requestOllama, getChannelData, getChannelMessagesAsString, getBotID, storeChatMessages, getName, postMessage} = require('./requests')
-const { getChannelsForTeam, insertMessage } = require('./messages');
-const { post } = require('request');
+const { insertChannel, getChannelByTeamId } = require('./token_db');
+const {getToken, getChatHistory, postEphemeral, requestOllama, getChannelData, getChannelMessagesAsString, getBotID, storeChatMessages, getName, postMessage} = require('./slack_requests')
+const { getChannelsForTeam, insertMessage } = require('./messages_db');
+require('dotenv').config({ path: './.env' });
 
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -15,13 +15,15 @@ event.endpoint = async (req, res) => {
         return res.status(400).send({ message: 'An error occurred while processing the request' });
     }
 
-    res.status(200).send();
+
     const apiPostBody = req.body;
 
     if (apiPostBody.type === 'url_verification') {
-        return res.send(apiPostBody.challenge);
+        return res.status(200).send(apiPostBody.challenge);
     }
-    else if (apiPostBody.event.type === 'message' && apiPostBody.event.subtype == null) {
+    
+    res.status(200).send();
+    if (apiPostBody.event.type === 'message' && apiPostBody.event.subtype == null) {
         console.log(apiPostBody.event);
         await checkAndAddMessage(apiPostBody.event);
     }
@@ -91,9 +93,9 @@ event.summarise = async (req, res) => {
             await postEphemeral(apiPostBody.channel_id, apiPostBody.user_id, ERRmessage, token);
             return;
         }
-
         const prompt = 'can you please concisely summarise what these messages are about: \n';
         const messages = await getChatHistory(apiPostBody.channel_id, limit, token);
+        console.log(messages);
         const generatedText = await requestOllama(prompt, messages);
         await postEphemeral(apiPostBody.channel_id, apiPostBody.user_id, generatedText, token);
     } catch (error) {
