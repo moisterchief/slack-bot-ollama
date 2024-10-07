@@ -1,11 +1,7 @@
 const axios = require('axios');
 const { getChannelByTeamId } = require('./token_db');
-const { insertMessage, getMessagesByChannel } = require('./messages_db');
-const { getChannelMessagesAsString } = require('./context_handler');
+const { insertMessage } = require('./messages_db');
 require('dotenv').config({ path: './.env' });
-
-const ollamaURL = process.env.OLLAMA_URL;
-const model = process.env.MODEL;
 
 async function getToken(team_id) {
     try {
@@ -16,7 +12,6 @@ async function getToken(team_id) {
         throw new Error('Failed to retrieve access token');
     }
 }
-
 
 /**
  * gets a specified amount of messages from chat history from the channel
@@ -76,6 +71,30 @@ async function getName(userID, token) {
     }
 }
 
+async function getThreadMessages(channel, ts, token) {
+    try {
+        const response = await axios.get('https://slack.com/api/conversations.replies', {
+            params: {
+                channel: channel,
+                ts: ts
+            },
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json; charset=utf-8'
+            }
+        });
+        if (response.data.ok) {
+            return response.data;
+        } 
+        else {
+            throw new Error(`Slack API Error: ${response.data.error}`);
+        }
+    } catch (error) {
+        console.error('Error:', error.message);
+        throw new Error('Failed to fetch channels');
+    }
+}
+
 async function getChannelData(team_id, token) {
     try {
         const response = await axios.get('https://slack.com/api/conversations.list', {
@@ -100,6 +119,7 @@ async function getChannelData(team_id, token) {
     }
 }
 
+//TODO: this should be refactored to use getChatHistory because this function should be in context handler not slack requests, ugly ass method, not very reusable, NO BUENO!
 /**
  * gets a specified amount of messages from chat history from the channel
  * @param {*} channel_id if of channel command sent from
@@ -138,22 +158,6 @@ async function storeChatMessages(channel_id, team_id, limit, token) {
     }
 }
 
-async function requestOllama(prompt, userText) {
-    try {
-        const response = await axios.post(ollamaURL, {
-            model: model,
-            messages: [{ role: 'user', content: prompt + userText }],
-            stream: false
-        });
-
-        const generatedText = response.data.message.content;
-        return generatedText;
-    } catch (error) {
-        console.error('Error:', error.message);
-        throw new Error('Failed to fetch data from Ollama API');
-    }
-}
-
 async function postEphemeral(channel_id, user_id, generatedText, token) {
     try {
         await axios.post('https://slack.com/api/chat.postEphemeral', {
@@ -166,24 +170,42 @@ async function postEphemeral(channel_id, user_id, generatedText, token) {
                 'Content-Type': 'application/json; charset=utf-8'
             }
         });
-        console.log('Message Sent');
+        console.log('Epheremeral Sent');
     } catch (error) {
         console.error('Error:', error.message);
     }
 }
 
-async function postMessage(channel_id, user_id, generatedText, token) {
+async function postMessage(channel_id, user_id, text, token) {
     try {
         await axios.post('https://slack.com/api/chat.postMessage', {
             channel: channel_id,
-            text: generatedText
+            text: text
         }, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json; charset=utf-8'
             }
         });
-        console.log('Message Sent');
+        console.log('Post Message Sent');
+    } catch (error) {
+        console.error('Error:', error.message);
+    }
+}
+
+async function postThreadedReply(channel_id, text, ts, token) {
+    try {
+        await axios.post('https://slack.com/api/chat.postMessage', {
+            channel: channel_id,
+            text: text,
+            thread_ts: ts
+        }, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json; charset=utf-8'
+            }
+        });
+        console.log('Thread Reply Sent');
     } catch (error) {
         console.error('Error:', error.message);
     }
@@ -200,7 +222,7 @@ async function getBotID(token) {
         });
 
         if (response.data.ok) {
-            console.log('Bot ID:', response.data.user_id);
+            // console.log('Bot ID:', response.data.user_id);
             return response.data.user_id; 
         } else {
             console.error('Slack API Error:', response.data.error);
@@ -210,4 +232,4 @@ async function getBotID(token) {
         throw new Error('Failed to fetch bot ID');
     }
 }
-module.exports = {getToken, getChatHistory, postEphemeral, requestOllama, getChannelData, getChannelMessagesAsString, getBotID, storeChatMessages, getName, postMessage};
+module.exports = {getToken, getChatHistory, postEphemeral, getChannelData, getBotID, storeChatMessages, getName, postMessage, getThreadMessages, postThreadedReply};

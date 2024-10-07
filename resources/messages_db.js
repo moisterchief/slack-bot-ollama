@@ -18,7 +18,7 @@ async function createIndexesForTeam(team_id) {
         await dbRun(`CREATE INDEX IF NOT EXISTS idx_channel_id ON ${tableName}(channel_id);`);
         await dbRun(`CREATE INDEX IF NOT EXISTS idx_timestamp ON ${tableName}(timestamp);`);
         await dbRun(`CREATE INDEX IF NOT EXISTS idx_user_id ON ${tableName}(user_id);`);
-        console.log(`Indexes created for team ${team_id}`);
+        // console.log(`Indexes created for team ${team_id}`);
     } catch (err) {
         console.error(`Error creating indexes for team ${team_id}:`, err.message);
     }
@@ -39,7 +39,7 @@ async function createTableForTeam(team_id) {
     try {
         await dbRun(sql);
         await createIndexesForTeam(team_id);
-        console.log('Table created successfully');
+        // console.log('Table created successfully');
     } catch (err) {
         console.error('Error creating table:', err.message);
     }

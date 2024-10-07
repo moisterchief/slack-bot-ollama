@@ -1,4 +1,7 @@
-const { getMessagesByChannel } = require('./messages_db')
+const { insertChannel, getChannelByTeamId } = require('./token_db');
+const {getToken, getChatHistory, postEphemeral, getChannelData, getBotID, storeChatMessages, getName, postMessage} = require('./slack_requests')
+const { getChannelsForTeam, insertMessage, getMessagesByChannel } = require('./messages_db');
+const { requestOllama } = require('./ollama_handler');
 const fs = require('fs').promises;
 
 async function getChannelMessagesAsString(team_id, channel_id) {
@@ -18,4 +21,38 @@ async function getChannelMessagesAsString(team_id, channel_id) {
 }
 
 
-module.exports = { getChannelMessagesAsString };
+async function addNewChannelData(event) {
+    const { user: joined_user, channel: channel, team: team} = event;
+    const token = await getToken(team);
+    const bot_id = await getBotID(token);
+
+    if (joined_user === bot_id) {
+        storeChatMessages(channel, team, 999, token);
+    }
+}
+
+async function addMessage(event) {
+    // console.log(apiPostBody);
+    const { channel: channel_id, user: user_id, text, ts: timestamp, team: team_id } = event;
+    const token = await getToken(team_id);
+    const bot_id = await getBotID(token);
+    const username = await getName(user_id, token);
+    if (user_id !== bot_id) {
+        
+        const message_text = `${username}: ${text}`;
+
+        const channels = await getChannelsForTeam(team_id);
+        if (channels.includes(channel_id)) {
+            // if (message_text.includes('??')) {
+            //     await handleQuestion(team_id, channel_id, user_id, username, text, token);
+            // }
+            await insertMessage(timestamp, team_id, channel_id, username, user_id, message_text);
+        }
+    }
+    else{
+        await insertMessage(timestamp, team_id, channel_id, username, user_id, `(BOT) YOU REPLIED: ${text}`); 
+    }
+}
+
+
+module.exports = { getChannelMessagesAsString, addMessage, addNewChannelData };
