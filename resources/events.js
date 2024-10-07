@@ -282,5 +282,38 @@ event.oauthRedirect = async (req, res) => {
 
 
 
+// produces stats based off the history of the channel
+events.channelStats = async (req) => {
+    limit = req.body.text;
+    if(!limit){
+        limit = 999;
+    }
+
+    const messages = getMessagesByChannel(req.channel_id,limit);
+
+    const skippedWords =[]; // need to add words
+
+    var users = new Map();
+    messages.forEach(message => {
+        
+        // check if the user hasnt been saved
+        if(!users.has(message.username)){
+            users.set(message.username,1);
+        }else{
+            // if the user is already in the map then add 1 to the value
+            users.set(message.username,users.get(message.username)+1);
+        }
+
+    });
+
+    output = "UserName | Number Of Messages Sent";
+    users.forEach (function(value, key) {
+        output += key + ' = ' + value;
+      });
+
+    // output 
+    await postEphemeral(req.channel_id, req.user_id, output, token)
+}
+
 // Export the model and handler functions
 module.exports = event;
