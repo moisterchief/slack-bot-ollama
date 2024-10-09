@@ -26,13 +26,8 @@ app.post('/summarise', events.summarise);
 app.get('/oauth-redirect', events.oauthRedirect);
 app.post('/endpoint', events.endpoint);
 app.post('/ask', events.ask);
-app.post('/slack/events', meow);
-
-function meow(){
-    console.log("meow");
-}
-
 app.post('/channelStats', events.channelStats);
+
 //start the express server and listen for incoming connections
 app.listen(port, () => {
     console.log(`Listening on port: ${port}`);
