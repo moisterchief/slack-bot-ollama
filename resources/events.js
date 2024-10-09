@@ -1,10 +1,10 @@
 const axios = require('axios');
 const { insertChannel, getChannelByTeamId } = require('./token_db');
 const {getToken, getChatHistory, postEphemeral, getChannelData, getBotID, storeChatMessages, getName, postMessage} = require('./slack_requests')
-const { getChannelsForTeam, insertMessage } = require('./messages_db');
+const { getChannelsForTeam, insertMessage, getMessageStatistics } = require('./messages_db');
 const { requestOllama } = require('./ollama_handler');
 const { repondUserHelpRequest } = require('./threading');
-const { getChannelMessagesAsString, addMessage, addNewChannelData } = require('./context_handler');
+const { getChannelMessagesAsStringWithUsername, addMessage, addNewChannelData } = require('./context_handler');
 require('dotenv').config({ path: './.env' });
 
 const CLIENT_ID = process.env.CLIENT_ID;
@@ -74,7 +74,7 @@ event.ask = async (req, res) => {
         await postEphemeral(apiPostBody.channel_id, apiPostBody.user_id, '....', token);
         const prompt = '\nUSING THIS CHAT HISTORY PLEASE ANSWER: ' + apiPostBody.text;
         // const prompt = await getChatHistory(apiPostBody.channel_id, 999, token);
-        const context = await getChannelMessagesAsString(apiPostBody.team_id, apiPostBody.channel_id);
+        const context = await getChannelMessagesAsStringWithUsername(apiPostBody.team_id, apiPostBody.channel_id);
         const generatedText = await requestOllama(prompt, context);
         await postEphemeral(apiPostBody.channel_id, apiPostBody.user_id, generatedText, token);
     } catch (error) {
@@ -108,6 +108,29 @@ event.summarise = async (req, res) => {
         await postEphemeral(apiPostBody.channel_id, apiPostBody.user_id, generatedText, token);
     } catch (error) {
         console.error('Error:', error.message);
+    }
+}
+
+event.stats = async (req, res) => {
+    if(!req.body){
+        return res.status(400).send({ message: 'An error occurred while processing the request' });
+    }
+
+    const apiPostBody = req.body;
+
+    const {channel_id: channel_id, team_id: team_id, text: text, command: command, user_id: user_id} = apiPostBody
+    console.log(command, text);
+
+    res.status(200).send();
+
+    try{
+        const token = await getToken(team_id);
+        const stats = await getMessageStatistics(team_id, channel_id, 999);
+    
+        await postEphemeral(channel_id, user_id, stats, token);
+        console.log("Sent Stats");
+    } catch(error) {
+        console.log('Error: ', error.message);
     }
 }
 
@@ -154,7 +177,7 @@ event.oauthRedirect = async (req, res) => {
 //     await postMessage(channel_id, user_id, '....', token);
 //     const prompt = `\n___________________________________________________________\nTHE CHAT HISTORY IS THERE FOR CONTEXT - please answer ${user}'s question: ${text}`;
     
-//     const context = await getChannelMessagesAsString(team_id, channel_id);
+//     const context = await getChannelMessagesAsStringWithUsername(team_id, channel_id);
 //     const generatedText = await requestOllama(prompt, context);
 
 //     console.log(prompt + '\n' + context);

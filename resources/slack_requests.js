@@ -142,10 +142,10 @@ async function storeChatMessages(channel_id, team_id, limit, token) {
                 const bot_id = await getBotID(token);
                 const userName = await getName(message.user, token);
                 if(bot_id === message.user){
-                    insertMessage(message.ts, team_id, channel_id, userName, message.user, '(BOT) YOU REPLIED: ' + message.text);
+                    insertMessage(message.ts, team_id, channel_id, userName, message.user, message.text);
                 }
                 else{
-                    insertMessage(message.ts, team_id, channel_id, userName, message.user, userName + ': ' + message.text);
+                    insertMessage(message.ts, team_id, channel_id, userName, message.user, message.text);
                 }
             })
         } else {
@@ -176,7 +176,7 @@ async function postEphemeral(channel_id, user_id, generatedText, token) {
     }
 }
 
-async function postMessage(channel_id, user_id, text, token) {
+async function postMessage(channel_id, text, token) {
     try {
         await axios.post('https://slack.com/api/chat.postMessage', {
             channel: channel_id,

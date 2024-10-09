@@ -4,9 +4,9 @@ const { getChannelsForTeam, insertMessage, getMessagesByChannel } = require('./m
 const { requestOllama } = require('./ollama_handler');
 const fs = require('fs').promises;
 
-async function getChannelMessagesAsString(team_id, channel_id) {
+async function getChannelMessagesAsStringWithUsername(team_id, channel_id) {
     rows = await getMessagesByChannel(team_id, channel_id, 999);
-    const context = rows.map(row => row.message_text).join('\n');
+    const context = rows.map(row => `${row.username}: ${row.message_text}`).join('\n');
         // Define the file path where you want to store the context
     const filePath = `./channel_${team_id}_${channel_id}_messages.txt`;
 
@@ -38,21 +38,19 @@ async function addMessage(event) {
     const bot_id = await getBotID(token);
     const username = await getName(user_id, token);
     if (user_id !== bot_id) {
-        
-        const message_text = `${username}: ${text}`;
 
         const channels = await getChannelsForTeam(team_id);
         if (channels.includes(channel_id)) {
             // if (message_text.includes('??')) {
             //     await handleQuestion(team_id, channel_id, user_id, username, text, token);
             // }
-            await insertMessage(timestamp, team_id, channel_id, username, user_id, message_text);
+            await insertMessage(timestamp, team_id, channel_id, username, user_id, text);
         }
     }
     else{
-        await insertMessage(timestamp, team_id, channel_id, username, user_id, `(BOT) YOU REPLIED: ${text}`); 
+        await insertMessage(timestamp, team_id, channel_id, username, user_id, text); 
     }
 }
 
 
-module.exports = { getChannelMessagesAsString, addMessage, addNewChannelData };
+module.exports = { getChannelMessagesAsStringWithUsername, addMessage, addNewChannelData };

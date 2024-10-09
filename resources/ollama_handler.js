@@ -9,6 +9,7 @@ async function requestOllama(prompt, context) {
     try {
         const response = await axios.post(ollamaURL, {
             model: model,
+            options: {'num_ctx': 8192},
             messages: [{ role: 'user', content: context + prompt }],
             stream: false
         });
