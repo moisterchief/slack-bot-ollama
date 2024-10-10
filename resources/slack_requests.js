@@ -1,6 +1,5 @@
 const axios = require('axios');
 const { getChannelByTeamId } = require('./token_db');
-const { insertMessage } = require('./messages_db');
 require('dotenv').config({ path: './.env' });
 
 async function getToken(team_id) {
@@ -44,6 +43,47 @@ async function getChatHistory(channel_id, limit, token) {
         }
     } catch (error) {
         console.error('Error:', error.message);
+        throw new Error('Failed to fetch chat history');
+    }
+}
+
+/**
+ * gets a specified amount of messages from chat history from the channel
+ * @param {*} channel_id if of channel command sent from
+ * @param {*} limit amount of messages to get
+ */
+async function getChatMessages(channel_id, limit, token) {
+    try {
+        const response = await axios.post('https://slack.com/api/conversations.history', {
+            channel: channel_id,
+            limit: limit
+        }, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json; charset=utf-8'
+            }
+        });
+
+        if (response.data.ok) {
+            // Map over the response messages and include additional details
+            const messages = await Promise.all(
+                response.data.messages.map(async (message) => {
+                    const userName = await getName(message.user, token);
+                    return {
+                        text: message.text || '', // Message text
+                        username: userName,       // Username of the sender
+                        timestamp: message.ts,   // Timestamp of the message
+                        user_id: message.user    // User ID of the sender
+                    };
+                })
+            );
+
+            return messages; // Return the array of message objects
+        } else {
+            throw new Error(`Slack API Error: ${response.data.error}`);
+        }
+    } catch (error) {
+        console.error('Error fetching chat messages:', error.message);
         throw new Error('Failed to fetch chat history');
     }
 }
@@ -95,68 +135,29 @@ async function getThreadMessages(channel, ts, token) {
     }
 }
 
-async function getChannelData(team_id, token) {
-    try {
-        const response = await axios.get('https://slack.com/api/conversations.list', {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json; charset=utf-8'
-            }
-        });
+// async function getChannelData(team_id, token) {
+//     try {
+//         const response = await axios.get('https://slack.com/api/conversations.list', {
+//             headers: {
+//                 'Authorization': `Bearer ${token}`,
+//                 'Content-Type': 'application/json; charset=utf-8'
+//             }
+//         });
 
-        if (response.data.ok) {
-            channel_ids = response.data.channels.map(channel => channel.id);
+//         if (response.data.ok) {
+//             channel_ids = response.data.channels.map(channel => channel.id);
 
-            channel_ids.forEach(channel => {
-                storeChatMessages(channel, team_id, 999, token);
-            });
-        } else {
-            throw new Error(`Slack API Error: ${response.data.error}`);
-        }
-    } catch (error) {
-        console.error('Error:', error.message);
-        throw new Error('Failed to fetch channels');
-    }
-}
-
-//TODO: this should be refactored to use getChatHistory because this function should be in context handler not slack requests, ugly ass method, not very reusable, NO BUENO!
-/**
- * gets a specified amount of messages from chat history from the channel
- * @param {*} channel_id if of channel command sent from
- * @param {*} limit amount of messages to get
- */
-async function storeChatMessages(channel_id, team_id, limit, token) {
-    try {
-        const response = await axios.post('https://slack.com/api/conversations.history', {
-            channel: channel_id,
-            limit: limit
-        }, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json; charset=utf-8'
-            }
-        });
-
-        if (response.data.ok) {
-            response.data.messages.map(async (message) => {
-                const bot_id = await getBotID(token);
-                const userName = await getName(message.user, token);
-                if(bot_id === message.user){
-                    insertMessage(message.ts, team_id, channel_id, userName, message.user, message.text);
-                }
-                else{
-                    insertMessage(message.ts, team_id, channel_id, userName, message.user, message.text);
-                }
-            })
-        } else {
-            // throw new Error(`Slack API Error: ${response.data.error}`);
-            console.log('not in channel', response.data);
-        }
-    } catch (error) {
-        console.error('Error:', error.message);
-        throw new Error('Failed to fetch chat history');
-    }
-}
+//             channel_ids.forEach(channel => {
+//                 storeChatMessages(channel, team_id, 999, token);
+//             });
+//         } else {
+//             throw new Error(`Slack API Error: ${response.data.error}`);
+//         }
+//     } catch (error) {
+//         console.error('Error:', error.message);
+//         throw new Error('Failed to fetch channels');
+//     }
+// }
 
 async function postEphemeral(channel_id, user_id, generatedText, token) {
     try {
@@ -232,4 +233,4 @@ async function getBotID(token) {
         throw new Error('Failed to fetch bot ID');
     }
 }
-module.exports = {getToken, getChatHistory, postEphemeral, getChannelData, getBotID, storeChatMessages, getName, postMessage, getThreadMessages, postThreadedReply};
+module.exports = {getToken, getChatHistory, postEphemeral, getBotID, getName, postMessage, getThreadMessages, postThreadedReply, getChatMessages};

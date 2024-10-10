@@ -2,7 +2,6 @@ const { getName, getThreadMessages, getToken, postThreadedReply, getBotID } = re
 const { requestOllama } = require('./ollama_handler');
 require('dotenv').config({ path: './.env' });
 const axios = require('axios');
-const { post } = require('request');
 
 const initialPrompt =`You provide advanced technical support, assume users have a high level of knowledge, only explain things if they don't understand. Your answers must be as short as necessary.`;
 
@@ -25,7 +24,7 @@ async function repondUserHelpRequest(event) {
         // const userName = userInfo?.real_name || userInfo?.name || 'there';
         const userName = await getName(event.user, token);
         let messages = '';
-        console.log(event);
+        // console.log(event);
         if (event.thread_ts) {
             // Fetch thread messages
             let threadMessages = await getThreadMessages(event.channel, event.thread_ts, token);
@@ -53,7 +52,7 @@ async function repondUserHelpRequest(event) {
         }
         
         const context = `THE CHAT HISTORY SO FAR:\n${messages}\n\nREPLY TO THIS NEW MESSAGE: ${event.text}`;
-        console.log(context);
+        // console.log(context);
 
 
         const responseText = await requestOllama(initialPrompt, context);

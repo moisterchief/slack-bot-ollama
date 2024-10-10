@@ -1,10 +1,11 @@
 const axios = require('axios');
 const { insertChannel, getChannelByTeamId } = require('./token_db');
-const {getToken, getChatHistory, postEphemeral, getChannelData, getBotID, storeChatMessages, getName, postMessage} = require('./slack_requests')
-const { getChannelsForTeam, insertMessage, getMessageStatistics } = require('./messages_db');
+const {getToken, getChatHistory, postEphemeral, getBotID, getName, postMessage} = require('./slack_requests')
+const { getChannelsForTeam, insertMessage } = require('./messages_db');
+const { getMessageStatistics } = require('./message_stats');
 const { requestOllama } = require('./ollama_handler');
 const { repondUserHelpRequest } = require('./threading');
-const { getChannelMessagesAsStringWithUsername, addMessage, addNewChannelData } = require('./context_handler');
+const { getChannelMessagesAsStringWithUsername, addMessage, addNewChannelData} = require('./context_handler');
 require('dotenv').config({ path: './.env' });
 
 const CLIENT_ID = process.env.CLIENT_ID;
@@ -29,11 +30,12 @@ event.endpoint = async (req, res) => {
 
     if (apiPostBody.event.type === 'message' && apiPostBody.event.subtype == null) {
         // console.log(apiPostBody.event);
+        await repondUserHelpRequest(apiPostBody.event);
         await addMessage(apiPostBody.event);
         // if(apiPostBody.event.text.includes('--help')){
         //     await repondUserHelpRequest(apiPostBody.event);
         // }
-        await repondUserHelpRequest(apiPostBody.event);
+
     }
     else if (apiPostBody.event.type === 'member_joined_channel'){
         await addNewChannelData(apiPostBody.event);
@@ -74,7 +76,7 @@ event.ask = async (req, res) => {
         await postEphemeral(apiPostBody.channel_id, apiPostBody.user_id, '....', token);
         const prompt = '\nUSING THIS CHAT HISTORY PLEASE ANSWER: ' + apiPostBody.text;
         // const prompt = await getChatHistory(apiPostBody.channel_id, 999, token);
-        const context = await getChannelMessagesAsStringWithUsername(apiPostBody.team_id, apiPostBody.channel_id);
+        const context = await getChannelMessagesAsStringWithUsername(apiPostBody.team_id, apiPostBody.channel_id, 999);
         const generatedText = await requestOllama(prompt, context);
         await postEphemeral(apiPostBody.channel_id, apiPostBody.user_id, generatedText, token);
     } catch (error) {
@@ -125,7 +127,7 @@ event.stats = async (req, res) => {
 
     try{
         const token = await getToken(team_id);
-        const stats = await getMessageStatistics(team_id, channel_id, 999);
+        const stats = await getMessageStatistics(channel_id, token);
     
         await postEphemeral(channel_id, user_id, stats, token);
         console.log("Sent Stats");
