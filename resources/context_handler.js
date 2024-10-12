@@ -36,8 +36,8 @@ async function checkIfShouldAddMessage(message) {
     RESPOND IN YES or NO ONLY`;
     
     try {
-        message = "THIS IS A MESSAGE IN A SLACK CHANNEL: \n\n"
-        const response = await requestOllama(prompt, message);
+        const context = `THIS IS A MESSAGE IN A SLACK CHANNEL: \n\n ${message}`;
+        const response = await requestOllama(prompt, context);
         console.log("OLLAMA HAS DECIDED: " + response);
         return response.toLowerCase().includes('yes');
     } catch (error) {

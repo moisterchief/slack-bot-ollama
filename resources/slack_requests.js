@@ -171,7 +171,7 @@ async function postEphemeral(channel_id, user_id, generatedText, token) {
                 'Content-Type': 'application/json; charset=utf-8'
             }
         });
-        console.log('Epheremeral Sent');
+        console.log('Ephemeral Sent');
     } catch (error) {
         console.error('Error:', error.message);
     }
