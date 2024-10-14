@@ -30,7 +30,9 @@ event.endpoint = async (req, res) => {
 
     if (apiPostBody.event.type === 'message' && apiPostBody.event.subtype == null) {
         // console.log(apiPostBody.event);
-        await repondUserHelpRequest(apiPostBody.event);
+        if(apiPostBody.event.thread_ts || apiPostBody.event.text.toLowerCase().indexOf('--help') > -1){
+            await repondUserHelpRequest(apiPostBody.event);
+        }
         await addMessage(apiPostBody.event);
         // if(apiPostBody.event.text.includes('--help')){
         //     await repondUserHelpRequest(apiPostBody.event);

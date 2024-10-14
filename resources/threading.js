@@ -10,7 +10,6 @@ async function repondUserHelpRequest(event) {
 
     if (!event.text) return; // Ignore messages without text
 
-
     const token = await getToken(event.team);
     const bot_id = await getBotID(token);
 
@@ -19,22 +18,20 @@ async function repondUserHelpRequest(event) {
     try {
         console.log("Received message text:", event.text);
 
-        // Fetch user information to customize responses
-        // const userInfo = await getUserInfo(message.user);
-        // const userName = userInfo?.real_name || userInfo?.name || 'there';
         const userName = await getName(event.user, token);
         let messages = '';
         // console.log(event);
         if (event.thread_ts) {
             // Fetch thread messages
             let threadMessages = await getThreadMessages(event.channel, event.thread_ts, token);
-            
             // Log thread messages for debugging
-            // console.log("THREADED: \n" + JSON.stringify(threadMessages, null, 2));
         
             // Access the messages array from threadMessages
             const messagesArray = threadMessages.messages; // Access the actual messages array
-            
+
+            if (!messagesArray[0].text.toLowerCase().includes('--help')) {
+                return;
+            }
             // Process the messages
             messages = await Promise.all(
                 messagesArray.map(async (message) => {
@@ -49,6 +46,7 @@ async function repondUserHelpRequest(event) {
                 })
             );
             messages = messages.join('\n');
+            console.log(messages);
         }
         
         const context = `THE CHAT HISTORY SO FAR:\n${messages}\n\nREPLY TO THIS NEW MESSAGE: ${event.text}`;
