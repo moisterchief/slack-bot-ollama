@@ -7,10 +7,8 @@ const { getChatMessages } = require('./slack_requests');
  */
 async function getMessageStatistics(channel_id, token) {
     try {
-        // Fetch messages for the channel
         const messages = await getChatMessages(channel_id, 999, token);
 
-        // Define skipped words and convert to a Set for faster lookups
         const skippedWords = new Set([
             "the", "a", "an", "and", "or", "but", "if", "you", "me", "we", "he", "she", "it", "they", 
             "them", "us", "is", "are", "was", "were", "be", "been", "this", "that", "in", "on", "at", 
@@ -20,17 +18,14 @@ async function getMessageStatistics(channel_id, token) {
         const wordCounts = new Map();
         const userMessageCounts = new Map();
 
-        // Process each message
         messages.forEach((message) => {
-            // Track message count per user
             userMessageCounts.set(
                 message.username,
                 (userMessageCounts.get(message.username) || 0) + 1
             );
 
-            // Split the message into words, filter out skipped words, and count them
             const words = message.text
-                .toLowerCase() // Convert to lowercase for consistent counting
+                .toLowerCase() 
                 .split(/\s+/)  // Split by any whitespace
                 .filter((word) => word && !skippedWords.has(word));
 

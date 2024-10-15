@@ -23,7 +23,6 @@ async function createIndexesForTeam(team_id) {
         console.error(`Error creating indexes for team ${team_id}:`, err.message);
     }
 }
-//TODO: separate db's for each team_id cause currently this is retarded
 
 // Function to create the table (if not already created)
 async function createTableForTeam(team_id) {
@@ -39,7 +38,6 @@ async function createTableForTeam(team_id) {
     try {
         await dbRun(sql);
         await createIndexesForTeam(team_id);
-        // console.log('Table created successfully');
     } catch (err) {
         console.error('Error creating table:', err.message);
     }

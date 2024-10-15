@@ -20,19 +20,16 @@ async function repondUserHelpRequest(event) {
 
         const userName = await getName(event.user, token);
         let messages = '';
-        // console.log(event);
         if (event.thread_ts) {
-            // Fetch thread messages
             let threadMessages = await getThreadMessages(event.channel, event.thread_ts, token);
-            // Log thread messages for debugging
-        
-            // Access the messages array from threadMessages
-            const messagesArray = threadMessages.messages; // Access the actual messages array
 
+            const messagesArray = threadMessages.messages; 
+
+            // If the first message doesn't contain --help then this thread is not a support thread
             if (!messagesArray[0].text.toLowerCase().includes('--help')) {
                 return;
             }
-            // Process the messages
+            
             messages = await Promise.all(
                 messagesArray.map(async (message) => {
                     let userName = '';
@@ -49,7 +46,6 @@ async function repondUserHelpRequest(event) {
         }
         
         const context = `THE CHAT HISTORY SO FAR:\n${messages}\n\nREPLY TO THIS NEW MESSAGE: ${event.text}`;
-        // console.log(context);
 
 
         const responseText = await requestOllama(initialPrompt, context);

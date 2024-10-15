@@ -29,14 +29,10 @@ event.endpoint = async (req, res) => {
     res.status(200).send();
 
     if (apiPostBody.event.type === 'message' && apiPostBody.event.subtype == null) {
-        // console.log(apiPostBody.event);
         if(apiPostBody.event.thread_ts || apiPostBody.event.text.toLowerCase().indexOf('--help') > -1){
             await repondUserHelpRequest(apiPostBody.event);
         }
         await addMessage(apiPostBody.event);
-        // if(apiPostBody.event.text.includes('--help')){
-        //     await repondUserHelpRequest(apiPostBody.event);
-        // }
 
     }
     else if (apiPostBody.event.type === 'member_joined_channel'){
@@ -77,7 +73,6 @@ event.ask = async (req, res) => {
         const token = await getToken(apiPostBody.team_id);
         await postEphemeral(apiPostBody.channel_id, apiPostBody.user_id, '....', token);
         const prompt = '\nUSING THIS CHAT HISTORY PLEASE ANSWER: ' + apiPostBody.text;
-        // const prompt = await getChatHistory(apiPostBody.channel_id, 999, token);
         const context = await getChannelMessagesAsStringWithUsername(apiPostBody.team_id, apiPostBody.channel_id, 999);
         const generatedText = await requestOllama(prompt, context);
         await postEphemeral(apiPostBody.channel_id, apiPostBody.user_id, generatedText, token);
@@ -107,7 +102,6 @@ event.summarise = async (req, res) => {
         }
         const prompt = '\n can you please concisely summarise what these messages are about';
         const messages = await getChatHistory(apiPostBody.channel_id, limit, token);
-        // console.log(messages);
         const generatedText = await requestOllama(prompt, messages);
         await postEphemeral(apiPostBody.channel_id, apiPostBody.user_id, generatedText, token);
     } catch (error) {
@@ -176,19 +170,6 @@ event.oauthRedirect = async (req, res) => {
     }
 }
 
-
-// async function handleQuestion(team_id, channel_id, user_id, user, text, token) {
-//     await postMessage(channel_id, user_id, '....', token);
-//     const prompt = `\n___________________________________________________________\nTHE CHAT HISTORY IS THERE FOR CONTEXT - please answer ${user}'s question: ${text}`;
-    
-//     const context = await getChannelMessagesAsStringWithUsername(team_id, channel_id);
-//     const generatedText = await requestOllama(prompt, context);
-
-//     console.log(prompt + '\n' + context);
-//     await postMessage(channel_id, user_id, generatedText, token);
-// }
-
-// Export the model and handler functions
 module.exports = event;
 
 

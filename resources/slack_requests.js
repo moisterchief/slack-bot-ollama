@@ -12,11 +12,6 @@ async function getToken(team_id) {
     }
 }
 
-/**
- * gets a specified amount of messages from chat history from the channel
- * @param {*} channel_id if of channel command sent from
- * @param {*} limit amount of messages to get
- */
 async function getChatHistory(channel_id, limit, token) {
     try {
         const response = await axios.post('https://slack.com/api/conversations.history', {
@@ -47,11 +42,6 @@ async function getChatHistory(channel_id, limit, token) {
     }
 }
 
-/**
- * gets a specified amount of messages from chat history from the channel
- * @param {*} channel_id if of channel command sent from
- * @param {*} limit amount of messages to get
- */
 async function getChatMessages(channel_id, limit, token) {
     try {
         const response = await axios.post('https://slack.com/api/conversations.history', {
@@ -65,7 +55,6 @@ async function getChatMessages(channel_id, limit, token) {
         });
 
         if (response.data.ok) {
-            // Map over the response messages and include additional details
             const messages = await Promise.all(
                 response.data.messages.map(async (message) => {
                     const userName = await getName(message.user, token);
@@ -135,30 +124,6 @@ async function getThreadMessages(channel, ts, token) {
     }
 }
 
-// async function getChannelData(team_id, token) {
-//     try {
-//         const response = await axios.get('https://slack.com/api/conversations.list', {
-//             headers: {
-//                 'Authorization': `Bearer ${token}`,
-//                 'Content-Type': 'application/json; charset=utf-8'
-//             }
-//         });
-
-//         if (response.data.ok) {
-//             channel_ids = response.data.channels.map(channel => channel.id);
-
-//             channel_ids.forEach(channel => {
-//                 storeChatMessages(channel, team_id, 999, token);
-//             });
-//         } else {
-//             throw new Error(`Slack API Error: ${response.data.error}`);
-//         }
-//     } catch (error) {
-//         console.error('Error:', error.message);
-//         throw new Error('Failed to fetch channels');
-//     }
-// }
-
 async function postEphemeral(channel_id, user_id, generatedText, token) {
     try {
         await axios.post('https://slack.com/api/chat.postEphemeral', {
@@ -223,7 +188,6 @@ async function getBotID(token) {
         });
 
         if (response.data.ok) {
-            // console.log('Bot ID:', response.data.user_id);
             return response.data.user_id; 
         } else {
             console.error('Slack API Error:', response.data.error);

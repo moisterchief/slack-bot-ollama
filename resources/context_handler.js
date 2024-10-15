@@ -47,7 +47,6 @@ async function checkIfShouldAddMessage(message) {
 }
 
 async function addMessage(event) {
-    // console.log(apiPostBody);
     const { channel: channel_id, user: user_id, text, ts: timestamp, team: team_id } = event;
 
     if (!(await checkIfShouldAddMessage(text))) {
@@ -59,18 +58,10 @@ async function addMessage(event) {
     const channels = await getChannelsForTeam(team_id);
 
     if (channels.includes(channel_id)) {
-        // if (message_text.includes('??')) {
-        //     await handleQuestion(team_id, channel_id, user_id, username, text, token);
-        // }
         await insertMessage(timestamp, team_id, channel_id, username, user_id, text);
     }
 }
 
-/**
- * gets a specified amount of messages from chat history from the channel
- * @param {*} channel_id if of channel command sent from
- * @param {*} limit amount of messages to get
- */
 async function storeChatMessages(channel_id, team_id, limit, token) {
     try {
         const response = await axios.post('https://slack.com/api/conversations.history', {
@@ -93,7 +84,6 @@ async function storeChatMessages(channel_id, team_id, limit, token) {
                     }
                 }
             } else {
-                // throw new Error(`Slack API Error: ${response.data.error}`);
                 console.log('not in channel', response.data);
             }
         }
