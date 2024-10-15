@@ -46,7 +46,6 @@ async function repondUserHelpRequest(event) {
                 })
             );
             messages = messages.join('\n');
-            console.log(messages);
         }
         
         const context = `THE CHAT HISTORY SO FAR:\n${messages}\n\nREPLY TO THIS NEW MESSAGE: ${event.text}`;
